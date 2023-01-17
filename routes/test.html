@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Test</title>
+    </head>
+    <body>
+        <video id="videoPlayer"></video>
+
+        <script>
+            const videoElement = document.querySelector('#videoPlayer');
+            if (!videoElement)
+                throw new Error('Missing video element.');
+
+            const uuid = '08f41ca3-26a1-4ca0-85d1-23ea22bbf80b',
+                channel = '0';
+
+            let mseQueue = [],
+                mseSourceBuffer, mseStreamingStarted = false, videoSound = false;
+
+            function startPlay() {
+                const url = `${location.protocol == 'https:' ? 'wss' : 'ws'}://192.168.1.101:8083/stream/${uuid}/channel/${channel}/mse?uuid=${uuid}&channel=${channel}`,
+                    mse = new MediaSource();
+
+                videoElement.src = window.URL.createObjectURL(mse);
+                mse.addEventListener('sourceopen', function() {
+                    const ws = new WebSocket(url);
+                    ws.binaryType = 'arraybuffer';
+                    ws.onopen = () => console.log('Connected to web socket.');
+                    ws.onmessage = event => {
+                        const data = new Uint8Array(event.data);
+                        if (data[0] === 9) {
+                            decoded_arr = data.slice(1);
+
+                            const mimeCodec = new TextDecoder('utf-8').decode(decoded_arr);
+                            
+                            videoSound = mimeCodec.indexOf(',') > 0;
+
+                            mseSourceBuffer = mse.addSourceBuffer('video/mp4; codecs="' + mimeCodec + '"');
+                            mseSourceBuffer.mode = 'segments';
+                            mseSourceBuffer.addEventListener('updateend', pushPacket);
+                        } else {
+                            readPacket(event.data);
+                        }
+                    };
+                }, false);
+            }
+
+            function pushPacket() {
+                if (!mseSourceBuffer.updating) {
+                    if (mseQueue.length > 0)
+                        mseSourceBuffer.appendBuffer(mseQueue.shift());
+                    else
+                        mseStreamingStarted = false;
+                }
+
+                if (videoElement.buffered.length > 0) {
+                    if (typeof document.hidden !== 'undefined' && document.hidden && !videoSound) {
+                        videoElement.currentTime = videoElement.buffered.end((videoElement.buffered.length - 1)) - 0.5;
+                    }
+                }
+            }
+
+            function readPacket(packet) {
+                if (!mseStreamingStarted) {
+                    mseSourceBuffer.appendBuffer(packet);
+                    mseStreamingStarted = true;
+                    return;
+                }
+
+                mseQueue.push(packet);
+                if (!mseSourceBuffer.updating) {
+                    pushPacket();
+                }
+            }
+
+            videoElement.addEventListener('loadeddata', () => {
+                videoElement.play();
+                let browser = browserDetector();
+            });
+            
+            videoElement.addEventListener('pause', () => {
+                if (videoElement.currentTime > videoElement.buffered.end((videoElement.buffered.length - 1))) {
+                    videoElement.currentTime = videoElement.buffered.end((videoElement.buffered.length - 1)) - 0.1;
+                    videoElement.play();
+                }
+            });
+
+            videoElement.addEventListener('error', () => {
+                console.log('video_error')
+            });
+
+            startPlay();
+
+        </script>
+    </body>
+</html>
