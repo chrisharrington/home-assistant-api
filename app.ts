@@ -7,22 +7,19 @@ import bodyParser from 'body-parser';
 
 import camera from '@root/routes/camera';
 
+import Config from '@root/config';
 import Secret from '@root/secret';
 
-import HomeAssistant from '@root/data/ha';
-
-HomeAssistant.init();
 
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(auth);
+// app.use(auth);
 
 camera(app);
 
-// app.listen(Config.apiPort, () => console.log(`Listening on port ${Config.apiPort}...`));
-
+app.listen(Config.apiPort, () => console.log(`API listening on port ${Config.apiPort}...`));
 
 function auth(request: Request, response: Response, next: any) {
     if (request.headers.authorization !== `Bearer ${Secret.apiKey}`)
