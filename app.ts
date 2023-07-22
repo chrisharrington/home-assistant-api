@@ -9,15 +9,17 @@ import camera from '@root/routes/camera';
 
 import Config from '@root/config';
 import Secret from '@root/secret';
+import solar from './routes/solar';
 
 
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
-// app.use(auth);
+app.use(auth);
 
 camera(app);
+solar(app);
 
 app.listen(Config.apiPort, () => console.log(`API listening on port ${Config.apiPort}...`));
 
