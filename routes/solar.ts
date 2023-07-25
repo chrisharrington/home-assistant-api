@@ -38,7 +38,10 @@ const getSolarData = async (request: Request, response: Response) => {
             }
         }).toArray();
 
-        response.status(200).send(JSON.stringify(results));
+        response
+            .status(200)
+            .set('Content-Type', 'application/json')
+            .send(JSON.stringify(results));
     } catch (e) {
         console.error(e);
         response.status(500).send(e);
@@ -80,14 +83,20 @@ const getSolarGeneration = async (request: Request, response: Response) => {
             db = mongo.db('home'),
             collection = db.collection('generation');
 
-        const results = await collection.find({
-            timestamp: {
-                $gte: start.toDate(),
-                $lte: end.toDate()
-            }
-        }).toArray();
+        const results = await collection
+            .find({
+                timestamp: {
+                    $gte: start.toDate(),
+                    $lte: end.toDate()
+                }
+            })
+            .sort({ timestamp: 1 })
+            .toArray();
 
-        response.status(200).send(JSON.stringify(results));
+        response
+            .status(200)
+            .set('Content-Type', 'application/json')
+            .send(JSON.stringify(results));
     } catch (e) {
         console.error(e);
         response.status(500).send(e);
