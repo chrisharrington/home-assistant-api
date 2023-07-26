@@ -12,4 +12,4 @@ RUN curl -sL https://deb.nodesource.com/setup_16.x -o nodesource_setup.sh && \
     npm install yarn -g
 
 # Run API.
-ENTRYPOINT ["yarn", "api:dev"]
+ENTRYPOINT ["yarn", "dev"]

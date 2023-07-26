@@ -4,13 +4,10 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-
 import camera from '@root/routes/camera';
-
+import energy from '@root/routes/energy';
 import Config from '@root/config';
 import Secret from '@root/secret';
-import solar from './routes/solar';
-
 
 const app = express();
 
@@ -19,7 +16,7 @@ app.use(bodyParser.json());
 app.use(auth);
 
 camera(app);
-solar(app);
+energy(app);
 
 app.listen(Config.apiPort, () => console.log(`API listening on port ${Config.apiPort}...`));
 
