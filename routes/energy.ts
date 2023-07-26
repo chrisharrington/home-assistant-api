@@ -43,7 +43,7 @@ const getEnergyData = async (request: Request, response: Response) => {
         response
             .status(200)
             .set('Content-Type', 'application/json')
-            .send(JSON.stringify(results));
+            .send(JSON.stringify(results.map(r => ({ timestamp: r.timestamp, value: r.currentEnergy }))));
     } catch (e) {
         console.error(e);
         response.status(500).send(e);
@@ -98,7 +98,7 @@ const getEnergyGeneration = async (request: Request, response: Response) => {
         response
             .status(200)
             .set('Content-Type', 'application/json')
-            .send(JSON.stringify(results));
+            .send(JSON.stringify(results.map(r => ({ timestamp: r.timestamp, value: r.daily }))));
     } catch (e) {
         console.error(e);
         response.status(500).send(e);
@@ -153,7 +153,7 @@ const getEnergyUsage = async (request: Request, response: Response) => {
         response
             .status(200)
             .set('Content-Type', 'application/json')
-            .send(JSON.stringify(results));
+            .send(JSON.stringify(results.map(r => ({ timestamp: r.timestamp, value: r.daily }))));
     } catch (e) {
         console.error(e);
         response.status(500).send(e);
