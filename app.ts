@@ -4,10 +4,12 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import camera from '@root/routes/camera';
-import energy from '@root/routes/energy';
 import Config from '@root/config';
 import Secret from '@root/secret';
+import camera from '@root/routes/camera';
+import energy from '@root/routes/energy';
+import investments from '@root/routes/investments';
+import { startDailyJobToUpdateDailyBalance } from '@root/routes/investments';
 
 const app = express();
 
@@ -17,6 +19,9 @@ app.use(auth);
 
 camera(app);
 energy(app);
+investments(app);
+
+startDailyJobToUpdateDailyBalance();
 
 app.listen(Config.apiPort, () => console.log(`API listening on port ${Config.apiPort}...`));
 

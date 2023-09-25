@@ -1,9 +1,8 @@
 import { Application, Request, Response } from 'express';
 import dayjs from 'dayjs';
 import { MongoClient } from 'mongodb';
-import Secret from '@root/secret';
-
 import utc from 'dayjs/plugin/utc';
+import Secret from '@root/secret';
 
 dayjs.extend(utc);
 
