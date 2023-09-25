@@ -9,12 +9,6 @@ import { CronJob } from 'cron';
 
 dayjs.extend(utc);
 
-// access_token: lYWOvSMe2ahI07W0v9hw0cqwXfVhAwtY0
-// refresh_token: KsMjd1pdoFc9M5CNSvYdYAR7PJLcZYGF0
-
-// https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token=
-// https://api06.iq.questrade.com/
-
 const mongo = new MongoClient(Secret.mongoConnectionString);
 
 type Auth = {
@@ -24,6 +18,7 @@ type Auth = {
     refreshToken: string;
     expiry: Date;
     uri: string;
+    owner: string;
 }
 
 type DailyBalance = {
@@ -55,12 +50,16 @@ export default ((app: Application) => {
 
     app.get(`${prefix}/balance`, async (_: Request, response: Response) => {
         try {
-            const auth = await getAuth(),
-                total = await getTotalBalance(auth);
+            const auths = await getAuths(),
+                balances = await Promise.all(auths.map(auth => getTotalBalance(auth))),
+                total = balances.reduce((sum: number, current: number) => sum + current, 0);
 
             await updateDailyBalance(total);
     
-            response.status(200).send(total.toString());
+            response.status(200).send({
+                amount: total,
+                change: 0
+            });
         } catch (e) {
             console.error(e);
             response.status(500).send(e);
@@ -74,21 +73,26 @@ const getTotalBalance : (auth: Auth) => Promise<number> = async (auth: Auth) => 
     return balances.reduce((sum: number, current: number) => sum + current, 0) as number;
 }
 
-const getAuth: () => Promise<Auth> = async () => {
+const getAuths: () => Promise<Auth[]> = async () => {
     const db = mongo.db('home'),
         collection = db.collection('investments'),
-        auth = (await collection.findOne({ auth: true })) as Auth;
+        auths = await collection.find({ auth: true }).toArray() as Auth[];
 
-    if (dayjs.utc(auth.expiry).isBefore(dayjs.utc())) {
-        const grant = await getQuestradeRefreshTokenGrant(auth.refreshToken);
-        auth.accessToken = grant.access_token;
-        auth.refreshToken = grant.refresh_token;
-        auth.uri = grant.api_server;
-        auth.expiry = dayjs.utc().add(grant.expires_in, 'seconds').toDate();
-        await collection.updateOne({ auth: true }, { $set: auth }, { upsert: true });
-    }
+    await Promise.all(auths.map(async auth => {
+        if (dayjs.utc(auth.expiry).isBefore(dayjs.utc())) {
+            const grant = await getQuestradeRefreshTokenGrant(auth.refreshToken);
+            delete auth._id;
+            auth.accessToken = grant.access_token;
+            auth.refreshToken = grant.refresh_token;
+            auth.uri = grant.api_server;
+            auth.expiry = dayjs.utc().add(grant.expires_in, 'seconds').toDate();
+            console.log(grant, auth);
 
-    return auth;
+            await collection.updateOne({ owner: auth.owner }, { $set: auth }, { upsert: true });
+        }
+    }));
+
+    return auths;
 }
 
 const getQuestradeRefreshTokenGrant = async (refreshToken: string) => {
@@ -150,8 +154,9 @@ const updateDailyBalance = async (balance: number) => {
 
 export const startDailyJobToUpdateDailyBalance = async () => {
     const job = new CronJob(Config.questradeBalanceUpdateCron, async () => {
-        const auth = await getAuth(),
-            total = await getTotalBalance(auth);
+        const auths = await getAuths(),
+            balances = await Promise.all(auths.map(auth => getTotalBalance(auth))),
+            total = balances.reduce((sum: number, current: number) => sum + current, 0);
 
         await updateDailyBalance(total);
 
