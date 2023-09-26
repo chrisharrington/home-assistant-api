@@ -52,13 +52,14 @@ export default ((app: Application) => {
         try {
             const auths = await getAuths(),
                 balances = await Promise.all(auths.map(auth => getTotalBalance(auth))),
-                total = balances.reduce((sum: number, current: number) => sum + current, 0);
+                today = balances.reduce((sum: number, current: number) => sum + current, 0),
+                yesterday = await getYesterdayBalance();
 
-            await updateDailyBalance(total);
+            await updateDailyBalance(today);
     
             response.status(200).send({
-                amount: total,
-                change: 0
+                amount: today,
+                change: (today - yesterday) / yesterday * 100
             });
         } catch (e) {
             console.error(e);
@@ -66,6 +67,14 @@ export default ((app: Application) => {
         }
     });
 });
+
+const getYesterdayBalance = async () => {
+    const db = mongo.db('home'),
+        collection = db.collection('investments'),
+        yesterday = await collection.findOne({ date: dayjs().subtract(1, 'day').startOf('day').toDate() }) as DailyBalance | null;
+
+    return yesterday?.balance;
+}
 
 const getTotalBalance : (auth: Auth) => Promise<number> = async (auth: Auth) => {
     const accountNumbers = await getAccountNumbers(auth),
@@ -86,8 +95,6 @@ const getAuths: () => Promise<Auth[]> = async () => {
             auth.refreshToken = grant.refresh_token;
             auth.uri = grant.api_server;
             auth.expiry = dayjs.utc().add(grant.expires_in, 'seconds').toDate();
-            console.log(grant, auth);
-
             await collection.updateOne({ owner: auth.owner }, { $set: auth }, { upsert: true });
         }
     }));
