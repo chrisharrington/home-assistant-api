@@ -97,6 +97,8 @@ const getAuths: () => Promise<Auth[]> = async () => {
             auth.expiry = dayjs.utc().add(grant.expires_in, 'seconds').toDate();
             await collection.updateOne({ owner: auth.owner }, { $set: auth }, { upsert: true });
         }
+
+        return auth;
     }));
 
     return auths;

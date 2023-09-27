@@ -6,6 +6,6 @@ export default {
     questradeRefreshTokenUri: (refreshToken: string) => `https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token=${refreshToken}`,
     questradeAccounts: 'v1/accounts',
     questradeBalance: (accountNumber: string) => `v1/accounts/${accountNumber}/balances`,
-    questradeBalanceUpdateCron: '30 23 1 * *',
+    questradeBalanceUpdateCron: '30 14 1 * *',
     exchangeRateApiUrl: 'https://api.exchangerate.host/convert?from=USD&to=CAD'
 }
