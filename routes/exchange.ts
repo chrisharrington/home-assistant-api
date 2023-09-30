@@ -38,10 +38,13 @@ export default ((app: Application) => {
 });
 
 const getRateFromRemote = async () => {
-    const response = await fetch(Config.exchangeRateApiUrl);
+    const response = await fetch(Config.exchangeRateApiUrl(Secret.exchangeApiKey));
     if (!response.ok)
         throw response;
 
     const json = await response.json();
-    return json.result as number;
+    if (json.result !== 'success')
+        throw json;
+
+    return json.conversion_rates.CAD;
 }

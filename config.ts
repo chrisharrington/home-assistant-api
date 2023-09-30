@@ -7,5 +7,5 @@ export default {
     questradeAccounts: 'v1/accounts',
     questradeBalance: (accountNumber: string) => `v1/accounts/${accountNumber}/balances`,
     questradeBalanceUpdateCron: '30 14 1 * *',
-    exchangeRateApiUrl: 'https://api.exchangerate.host/convert?from=USD&to=CAD'
+    exchangeRateApiUrl: (apiKey: string) => `https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`
 }
