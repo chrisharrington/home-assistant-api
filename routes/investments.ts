@@ -83,11 +83,11 @@ const getTotalBalance : (auth: Auth) => Promise<number> = async (auth: Auth) => 
 }
 
 const getAuths: () => Promise<Auth[]> = async () => {
-    const db = mongo.db('home'),
+    let db = mongo.db('home'),
         collection = db.collection('investments'),
         auths = await collection.find({ auth: true }).toArray() as Auth[];
 
-    await Promise.all(auths.map(async auth => {
+    for (const auth of auths) {
         if (dayjs.utc(auth.expiry).isBefore(dayjs.utc())) {
             const grant = await getQuestradeRefreshTokenGrant(auth.refreshToken);
             delete auth._id;
@@ -97,9 +97,7 @@ const getAuths: () => Promise<Auth[]> = async () => {
             auth.expiry = dayjs.utc().add(grant.expires_in, 'seconds').toDate();
             await collection.updateOne({ owner: auth.owner }, { $set: auth }, { upsert: true });
         }
-
-        return auth;
-    }));
+    }
 
     return auths;
 }
