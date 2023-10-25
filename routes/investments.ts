@@ -43,8 +43,7 @@ type Account = {
 export default ((app: Application) => {
     const prefix = '/investments';
 
-    app.get(`${prefix}/auth`, (request: Request, response: Response) => {
-        console.log(request.query);
+    app.get(`${prefix}/auth`, (_: Request, response: Response) => {
         response.sendStatus(200);
     });
 
