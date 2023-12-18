@@ -2,10 +2,9 @@ import { Application, Request, Response } from 'express';
 import { MongoClient, ObjectId } from 'mongodb';
 import dayjs from 'dayjs';
 import fetch from 'node-fetch';
-import Secret from '@root/secret';
 import Config from '@root/config';
 
-const mongo = new MongoClient(Secret.mongoConnectionString);
+const mongo = new MongoClient(process.env.MONGO_CONNECTION_STRING);
 
 type Exchange = {
     _id?: ObjectId;
@@ -38,7 +37,7 @@ export default ((app: Application) => {
 });
 
 const getRateFromRemote = async () => {
-    const response = await fetch(Config.exchangeRateApiUrl(Secret.exchangeApiKey));
+    const response = await fetch(Config.exchangeRateApiUrl(process.env.EXCHANGE_API_KEY));
     if (!response.ok)
         throw response;
 

@@ -2,11 +2,9 @@ import { Application, Request, Response } from 'express';
 import dayjs from 'dayjs';
 import { MongoClient } from 'mongodb';
 import utc from 'dayjs/plugin/utc';
-import Secret from '@root/secret';
-
 dayjs.extend(utc);
 
-const mongo = new MongoClient(Secret.mongoConnectionString);
+const mongo = new MongoClient(process.env.MONGO_CONNECTION_STRING);
 
 export default ((app: Application) => {
     app.get('/energy', getEnergyData);

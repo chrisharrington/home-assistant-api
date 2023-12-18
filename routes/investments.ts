@@ -3,13 +3,12 @@ import { MongoClient, ObjectId } from 'mongodb';
 import fetch from 'node-fetch';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import Secret from '@root/secret';
 import Config from '@root/config';
 import { CronJob } from 'cron';
 
 dayjs.extend(utc);
 
-const mongo = new MongoClient(Secret.mongoConnectionString);
+const mongo = new MongoClient(process.env.MONGO_CONNECTION_STRING);
 
 type Auth = {
     _id?: ObjectId;
