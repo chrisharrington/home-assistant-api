@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import Config from '@root/config';
 import { CronJob } from 'cron';
+import { sendMessage } from '@root/notifications/bot';
 
 dayjs.extend(utc);
 
@@ -165,7 +166,9 @@ export const startDailyJobToUpdateDailyBalance = async () => {
 
         await updateDailyBalance(total);
 
-        console.log(`Updated daily Questrade balance to $${total.toFixed(2)}.`);
+        const message = `Updated daily Questrade balance to $${total.toFixed(2)}.`;
+        console.log(message);
+        sendMessage(message);
     }, null, true, Config.timezone);
 
     job.start();

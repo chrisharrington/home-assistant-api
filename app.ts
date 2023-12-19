@@ -11,7 +11,9 @@ import energy from '@root/routes/energy';
 import investments from '@root/routes/investments';
 import exchange from '@root/routes/exchange';
 import { startDailyJobToUpdateDailyBalance } from '@root/routes/investments';
+import { init } from './notifications/bot';
 
+init();
 
 const app = express();
 

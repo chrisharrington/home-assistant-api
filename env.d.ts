@@ -6,6 +6,7 @@ declare global {
             MONGO_CONNECTION_STRING: string;
             EXCHANGE_API_KEY: string;
             TELEGRAM_API_KEY: string;
+            TELEGRAM_CHAT_ID: string;
         }
     }
 }
