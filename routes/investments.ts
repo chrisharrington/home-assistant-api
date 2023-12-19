@@ -194,7 +194,7 @@ export const startDailyJobToUpdateDailyBalance = async () => {
 
         await updateDailyBalance(total);
 
-        const message = `Updated daily Questrade balance to $${total.toFixed(2)}.`;
+        const message = `Updated daily Questrade balance to $${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.`;
         console.log(message);
         sendTelegramMessage(message);
     }, null, true, Config.timezone);
