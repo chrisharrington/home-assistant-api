@@ -49,20 +49,25 @@ export default ((app: Application) => {
 
     app.get(`${prefix}/balance`, async (_: Request, response: Response) => {
         try {
-            const auths = await getAuths(),
-                balances = await Promise.all(auths.map(auth => getTotalBalance(auth))),
-                today = balances.reduce((sum: number, current: number) => sum + current, 0),
+            let today = await getTodayBalance(),
                 yesterday = await getYesterdayBalance();
+
+            if (!today) {
+                const auths = await getAuths(),
+                    balances = await Promise.all(auths.map(auth => getRemoteTotalBalance(auth)));
+
+                today = balances.reduce((sum: number, current: number) => sum + current, 0);
+            }
 
             await updateDailyBalance(today);
     
             response.status(200).send({
                 amount: today,
-                change: (today - yesterday) / yesterday * 100
+                change: today && yesterday ? (today - yesterday) / yesterday * 100 : 0
             });
         } catch (e) {
             console.error(e);
-            response.status(500).send(e);
+            response.sendStatus(500);
         }
     });
 });
@@ -75,10 +80,12 @@ const getYesterdayBalance = async () => {
     return yesterday?.balance;
 }
 
-const getTotalBalance : (auth: Auth) => Promise<number> = async (auth: Auth) => {
-    const accountNumbers = await getAccountNumbers(auth),
-        balances = await Promise.all(accountNumbers.map(accountNumber => getAccountBalance(auth, accountNumber)));
-    return balances.reduce((sum: number, current: number) => sum + current, 0) as number;
+const getTodayBalance = async () => {
+    const db = mongo.db('home'),
+        collection = db.collection('investments'),
+        balance = await collection.findOne({ date: dayjs().startOf('day').toDate() }) as DailyBalance | null;
+
+    return balance?.balance;
 }
 
 const getAuths: () => Promise<Auth[]> = async () => {
@@ -93,7 +100,7 @@ const getAuths: () => Promise<Auth[]> = async () => {
             auth.accessToken = grant.access_token;
             auth.refreshToken = grant.refresh_token;
             auth.uri = grant.api_server;
-            auth.expiry = dayjs.utc().add(grant.expires_in, 'seconds').toDate();
+            auth.expiry = dayjs.utc().add(grant.expires_in - 30, 'seconds').toDate();
             await collection.updateOne({ owner: auth.owner }, { $set: auth }, { upsert: true });
         }
     }
@@ -105,8 +112,11 @@ const getQuestradeRefreshTokenGrant = async (refreshToken: string) => {
     const uri = Config.questradeRefreshTokenUri(refreshToken),
         response = await fetch(uri);
 
-    if (!response.ok)
+    if (!response.ok) {
+        console.log(`Error getting Questrade refresh token grant: ${response.status} ${response.statusText}`);
+        console.log(`GET ${uri}`);
         throw response;
+    }
 
     return (await response.json()) as QuestradeRefreshTokenGrant;
 }
@@ -118,22 +128,34 @@ const getAccountNumbers = async (auth: Auth) => {
         }
     });
 
-    if (!response.ok)
+    if (!response.ok) {
+        console.log(`Error getting Questrade account numbers: ${response.status} ${response.statusText}`)
+        console.log(`GET ${auth.uri}${Config.questradeAccounts} with access token ${auth.accessToken}`);
         throw response;
+    }
 
     const json = await response.json();
     return (json.accounts as Account[]).map(account => account.number);
 }
 
-const getAccountBalance = async (auth: Auth, accountNumber: string) => {
+const getRemoteTotalBalance : (auth: Auth) => Promise<number> = async (auth: Auth) => {
+    const accountNumbers = await getAccountNumbers(auth),
+        balances = await Promise.all(accountNumbers.map(accountNumber => getRemoteAccountBalance(auth, accountNumber)));
+    return balances.reduce((sum: number, current: number) => sum + current, 0) as number;
+}
+
+const getRemoteAccountBalance = async (auth: Auth, accountNumber: string) => {
     const response = await fetch(`${auth.uri}${Config.questradeBalance(accountNumber)}`, {
         headers: {
             Authorization: `Bearer ${auth.accessToken}`
         }
     });
 
-    if (!response.ok)
+    if (!response.ok) {
+        console.log(`Error getting Questrade account balance: ${response.status} ${response.statusText}`)
+        console.log(`GET ${auth.uri}${Config.questradeBalance(accountNumber)} with access token ${auth.accessToken}`);
         throw response;
+    }
 
     const json = await response.json();
     return json.combinedBalances
@@ -161,7 +183,7 @@ const updateDailyBalance = async (balance: number) => {
 export const startDailyJobToUpdateDailyBalance = async () => {
     const job = new CronJob(Config.questradeBalanceUpdateCron, async () => {
         const auths = await getAuths(),
-            balances = await Promise.all(auths.map(auth => getTotalBalance(auth))),
+            balances = await Promise.all(auths.map(auth => getRemoteTotalBalance(auth))),
             total = balances.reduce((sum: number, current: number) => sum + current, 0);
 
         await updateDailyBalance(total);
