@@ -10,6 +10,6 @@ export function init() {
     console.log('Telegram bot initialized.');
 }
 
-export function sendMessage(message: string) {
+export function sendTelegramMessage(message: string) {
     bot.sendMessage(process.env.TELEGRAM_CHAT_ID, message);
 }

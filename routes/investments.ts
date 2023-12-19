@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import Config from '@root/config';
 import { CronJob } from 'cron';
-import { sendMessage } from '@root/notifications/bot';
+import { sendTelegramMessage } from '@root/notifications/bot';
 
 dayjs.extend(utc);
 
@@ -113,8 +113,10 @@ const getQuestradeRefreshTokenGrant = async (refreshToken: string) => {
         response = await fetch(uri);
 
     if (!response.ok) {
-        console.log(`Error getting Questrade refresh token grant: ${response.status} ${response.statusText}`);
+        const message = `Error getting Questrade refresh token grant: ${response.status} ${response.statusText}`;
+        console.log(message);
         console.log(`GET ${uri}`);
+        sendTelegramMessage(message);
         throw response;
     }
 
@@ -129,8 +131,10 @@ const getAccountNumbers = async (auth: Auth) => {
     });
 
     if (!response.ok) {
-        console.log(`Error getting Questrade account numbers: ${response.status} ${response.statusText}`)
+        const message = `Error getting Questrade account numbers: ${response.status} ${response.statusText}`;
+        console.log(message);
         console.log(`GET ${auth.uri}${Config.questradeAccounts} with access token ${auth.accessToken}`);
+        sendTelegramMessage(message)
         throw response;
     }
 
@@ -152,8 +156,10 @@ const getRemoteAccountBalance = async (auth: Auth, accountNumber: string) => {
     });
 
     if (!response.ok) {
-        console.log(`Error getting Questrade account balance: ${response.status} ${response.statusText}`)
+        const message = `Error getting Questrade account balance: ${response.status} ${response.statusText}`;
+        console.log(message)
         console.log(`GET ${auth.uri}${Config.questradeBalance(accountNumber)} with access token ${auth.accessToken}`);
+        sendTelegramMessage(message);
         throw response;
     }
 
@@ -190,7 +196,7 @@ export const startDailyJobToUpdateDailyBalance = async () => {
 
         const message = `Updated daily Questrade balance to $${total.toFixed(2)}.`;
         console.log(message);
-        sendMessage(message);
+        sendTelegramMessage(message);
     }, null, true, Config.timezone);
 
     job.start();
