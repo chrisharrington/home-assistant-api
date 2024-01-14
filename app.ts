@@ -10,6 +10,7 @@ import camera from '@root/routes/camera';
 import energy from '@root/routes/energy';
 import investments from '@root/routes/investments';
 import exchange from '@root/routes/exchange';
+import notifications from './routes/notifications';
 import { startDailyJobToUpdateDailyBalance } from '@root/routes/investments';
 import { init } from './notifications/bot';
 
@@ -25,6 +26,7 @@ camera(app);
 energy(app);
 investments(app);
 exchange(app);
+notifications(app);
 
 startDailyJobToUpdateDailyBalance();
 
