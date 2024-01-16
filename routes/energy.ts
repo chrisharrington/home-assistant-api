@@ -119,7 +119,7 @@ const insertDailyEnergyUsage = async (request: Request, response: Response) => {
             daily: request.body.usage
         });
 
-        sendTelegramMessage(`Yesterday's energy usage was ${request.body.usage} watts.`);
+        sendTelegramMessage(`Yesterday's energy usage was ${request.body.usage} kWh.`);
 
         response.sendStatus(200);
     } catch (e) {
