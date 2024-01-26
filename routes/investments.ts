@@ -85,7 +85,15 @@ const getTodayBalance = async () => {
         collection = db.collection('investments'),
         balance = await collection.findOne({ date: dayjs().startOf('day').toDate() }) as DailyBalance | null;
 
-    return balance?.balance;
+    if (dayjs(balance.date).diff(dayjs(), 'minutes') <= 15)
+        return balance?.balance;
+
+    const auths = await getAuths(),
+        balances = await Promise.all(auths.map(auth => getRemoteTotalBalance(auth))),
+        total = balances.reduce((sum: number, current: number) => sum + current, 0);
+    
+    await updateDailyBalance(total);
+    return total;
 }
 
 const getAuths: () => Promise<Auth[]> = async () => {
