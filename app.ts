@@ -3,7 +3,6 @@ require('dotenv').config();
 
 import express from 'express';
 import type { Request, Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import Config from '@root/config';
@@ -21,7 +20,6 @@ const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: false, legacyHeaders: false }))
 app.use(auth);
 
 camera(app);

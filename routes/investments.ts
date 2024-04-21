@@ -85,15 +85,7 @@ const getTodayBalance = async () => {
         collection = db.collection('investments'),
         balance = await collection.findOne({ date: dayjs().startOf('day').toDate() }) as DailyBalance | null;
 
-    if (dayjs(balance.date).diff(dayjs(), 'minutes') <= 15)
-        return balance?.balance;
-
-    const auths = await getAuths(),
-        balances = await Promise.all(auths.map(auth => getRemoteTotalBalance(auth))),
-        total = balances.reduce((sum: number, current: number) => sum + current, 0);
-    
-    await updateDailyBalance(total);
-    return total;
+    return balance && dayjs(balance.date).diff(dayjs(), 'minutes') <= 15 ? balance.balance : null;
 }
 
 const getAuths: () => Promise<Auth[]> = async () => {
@@ -202,9 +194,7 @@ export const startDailyJobToUpdateDailyBalance = async () => {
 
         await updateDailyBalance(total);
 
-        const message = `Updated daily Questrade balance to $${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.`;
-        console.log(message);
-        sendTelegramMessage(message);
+        sendTelegramMessage( `Updated daily Questrade balance to $${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.`);
     }, null, true, Config.timezone);
 
     job.start();
