@@ -8,19 +8,20 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "logs": "docker-compose -f ../docker-compose.yml logs -f --tail 100 api",
-    "dev": "npx tsc-watch --onSuccess \"node app.js\""
+    "logs": "docker compose -f ../docker-compose.yml logs -f --tail 100 api",
+    "dev": "bun --watch app.ts"
   },
   "_moduleAliases": {
     "@root": "./"
   },
   "dependencies": {
     "body-parser": "^1.20.1",
+    "bottleneck": "^2.19.5",
     "cors": "^2.8.5",
     "cron": "^2.4.4",
     "dayjs": "^1.11.7",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "express": "^5.1.0",
     "express-rate-limit": "^7.1.5",
     "fluent-ffmpeg": "^2.1.2",
     "home-assistant-js-websocket": "^8.0.1",
@@ -28,13 +29,14 @@
     "node-fetch": "2",
     "node-telegram-bot-api": "^0.64.0",
     "path": "^0.12.7",
+    "questrade": "^2.1.0",
     "ws": "^8.12.0"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.2",
     "@types/cors": "^2.8.13",
     "@types/cron": "^2.4.0",
-    "@types/express": "^4.17.15",
+    "@types/express": "^5.0.3",
     "@types/fluent-ffmpeg": "^2.1.20",
     "@types/node-fetch": "^2.6.6",
     "@types/node-telegram-bot-api": "^0.64.1",

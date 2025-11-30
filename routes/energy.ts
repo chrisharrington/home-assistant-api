@@ -8,21 +8,26 @@ dayjs.extend(utc);
 const mongo = new MongoClient(process.env.MONGO_CONNECTION_STRING);
 
 export default ((app: Application) => {
-    app.get('/energy/generation', getEnergyGeneration);
+    app.get('/energy/generation', (request, response) => getEnergyGeneration(request, response));
     app.post('/energy/generation/daily', insertDailyEnergyGeneration);
     app.get('/energy/usage', getEnergyUsage);
     app.post('/energy/usage/daily', insertDailyEnergyUsage);
 });
 
-const getEnergyGeneration = async (request: Request, response: Response) => {
+const getEnergyGeneration = async (request: Request, response: Response): Promise<void> => {
     try {
         console.log('GET /energy/generation');
         console.log(JSON.stringify(request.query, null, 4));
 
-        if (!request.query.start)
-            return response.status(400).send('Missing start date.');
-        if (!request.query.end)
-            return response.status(400).send('Missing end date.');
+        if (!request.query.start) {
+            response.status(400).send('Missing start date.');
+            return;
+        }
+
+        if (!request.query.end) {
+            response.status(400).send('Missing end date.');
+            return;
+        }
 
         const start = dayjs(request.query.start as string),
             end = dayjs(request.query.end as string),
@@ -49,7 +54,7 @@ const getEnergyGeneration = async (request: Request, response: Response) => {
     }
 }
 
-const insertDailyEnergyGeneration = async (request: Request, response: Response) => {
+const insertDailyEnergyGeneration = async (request: Request, response: Response): Promise<void> => {
     try {
         console.log('POST /energy/generation');
         console.log(JSON.stringify(request.body, null, 4));
@@ -72,15 +77,20 @@ const insertDailyEnergyGeneration = async (request: Request, response: Response)
     }
 }
 
-const getEnergyUsage = async (request: Request, response: Response) => {
+const getEnergyUsage = async (request: Request, response: Response): Promise<void> => {
     try {
         console.log('GET /energy/usage');
         console.log(JSON.stringify(request.query, null, 4));
 
-        if (!request.query.start)
-            return response.status(400).send('Missing start date.');
-        if (!request.query.end)
-            return response.status(400).send('Missing end date.');
+        if (!request.query.start) {
+            response.status(400).send('Missing start date.');
+            return;
+        }
+
+        if (!request.query.end) {
+            response.status(400).send('Missing end date.');
+            return;
+        }
 
         const start = dayjs(request.query.start as string),
             end = dayjs(request.query.end as string),

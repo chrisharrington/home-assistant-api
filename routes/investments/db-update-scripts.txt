@@ -1,0 +1,2 @@
+db.investments.updateOne({ owner: 'chris', auth: true }, { $set: { accessToken: 'uECV8UZodw5pB5NtKkuAvbenb8WFeLwq0', refreshToken: 'DYQrOyfnnVh_mcVaKc3QL6sHlvugMD1K0', uri: 'https://api03.iq.questrade.com/',expiry: new Date() }});
+db.investments.updateOne({ owner: 'sarah', auth: true }, { $set: { accessToken: 'DhmvpHwOiBbVT7lnjXde34keRpiuXQd-0', refreshToken: 'Afezj3ztlmwSEz_Rus0BhsZepyxWB90j0', uri: 'https://api05.iq.questrade.com/', expiry: new Date() }});
