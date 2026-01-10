@@ -17,6 +17,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "bun-test.d.ts",
     "./node_modules/@types/**/*.d.ts"
   ],
   "exclude": [
