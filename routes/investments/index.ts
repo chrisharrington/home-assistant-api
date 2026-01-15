@@ -7,6 +7,7 @@
 import { Application } from 'express';
 import authRouter from './auth';
 import balanceRouter from './balance';
+import dashboardRouter from './dashboard';
 import { startJobToUpdateBalance, fetchBalance } from './shared';
 
 /**
@@ -19,6 +20,7 @@ export default function (app: Application): void {
     // Mount route modules.
     app.use(`${prefix}/auth`, authRouter);
     app.use(`${prefix}/balance`, balanceRouter);
+    app.use(`${prefix}/dashboard`, dashboardRouter);
 }
 
 // Re-export shared functions for external use.

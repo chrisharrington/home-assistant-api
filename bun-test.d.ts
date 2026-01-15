@@ -10,11 +10,16 @@ declare module 'bun:test' {
     export function expect<T>(value: T): {
         toBe(expected: T): void;
         toEqual(expected: T): void;
+        toBeCloseTo(expected: number, numDigits?: number): void;
         toBeDefined(): void;
         toBeUndefined(): void;
         toBeNull(): void;
         toBeTruthy(): void;
         toBeFalsy(): void;
+        toBeGreaterThan(expected: number): void;
+        toBeGreaterThanOrEqual(expected: number): void;
+        toBeLessThan(expected: number): void;
+        toBeLessThanOrEqual(expected: number): void;
         toHaveLength(length: number): void;
         toHaveProperty(property: string, value?: unknown): void;
         toContain(item: unknown): void;
@@ -25,6 +30,7 @@ declare module 'bun:test' {
         not: {
             toBe(expected: T): void;
             toEqual(expected: T): void;
+            toBeCloseTo(expected: number, numDigits?: number): void;
             toBeDefined(): void;
             toBeUndefined(): void;
             toBeNull(): void;

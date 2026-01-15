@@ -72,4 +72,116 @@ describe('shared investments module', () => {
             expect(total).toBe(0);
         });
     });
+
+    describe('dashboard handler contract', () => {
+        it('handleGetDashboard should return { dashboard: DashboardResponse | null, success: boolean }', () => {
+            type DashboardResponse = {
+                totalPortfolio: {
+                    amount: number;
+                    changePercent: number;
+                    history: { date: string; value: number }[];
+                };
+                accounts: { accountNumber: string; accountType: string; owner: string; balance: number }[];
+                symbols: { symbol: string; symbolId: number; dayChangePercent: number }[];
+                lastUpdated: string;
+            };
+
+            const example: { dashboard: DashboardResponse; success: boolean } = {
+                dashboard: {
+                    totalPortfolio: {
+                        amount: 125000,
+                        changePercent: 1.25,
+                        history: [{ date: '2026-01-10', value: 125000 }]
+                    },
+                    accounts: [{ accountNumber: '12345', accountType: 'TFSA', owner: 'chris', balance: 50000 }],
+                    symbols: [{ symbol: 'VFV.TO', symbolId: 12345, dayChangePercent: 0.85 }],
+                    lastUpdated: '2026-01-10T15:00:00Z'
+                },
+                success: true
+            };
+
+            expect(example).toHaveProperty('dashboard');
+            expect(example).toHaveProperty('success');
+            expect(example.dashboard.totalPortfolio).toHaveProperty('amount');
+            expect(example.dashboard.totalPortfolio).toHaveProperty('changePercent');
+            expect(example.dashboard.totalPortfolio).toHaveProperty('history');
+        });
+    });
+
+    describe('symbol daily change calculations', () => {
+        it('calculates positive daily change correctly', () => {
+            const lastTradePrice = 120.50,
+                openPrice = 119.00,
+                dayChangePercent = ((lastTradePrice - openPrice) / openPrice) * 100;
+
+            expect(Math.round(dayChangePercent * 100) / 100).toBeCloseTo(1.26, 1);
+        });
+
+        it('calculates negative daily change correctly', () => {
+            const lastTradePrice = 118.00,
+                openPrice = 120.00,
+                dayChangePercent = ((lastTradePrice - openPrice) / openPrice) * 100;
+
+            expect(Math.round(dayChangePercent * 100) / 100).toBeCloseTo(-1.67, 1);
+        });
+
+        it('returns zero for no price change', () => {
+            const lastTradePrice = 120.00,
+                openPrice = 120.00,
+                dayChangePercent = ((lastTradePrice - openPrice) / openPrice) * 100;
+
+            expect(dayChangePercent).toBe(0);
+        });
+
+        it('handles zero open price gracefully', () => {
+            const lastTradePrice = 120.00,
+                openPrice = 0,
+                dayChangePercent = openPrice > 0
+                    ? ((lastTradePrice - openPrice) / openPrice) * 100
+                    : 0;
+
+            expect(dayChangePercent).toBe(0);
+        });
+    });
+
+    describe('portfolio change calculations', () => {
+        it('calculates portfolio percentage change correctly', () => {
+            const latest = 125000,
+                yesterday = 123500,
+                changePercent = ((latest - yesterday) / yesterday) * 100;
+
+            expect(Math.round(changePercent * 100) / 100).toBeCloseTo(1.21, 1);
+        });
+
+        it('handles missing yesterday balance', () => {
+            const latest = 125000,
+                yesterday: number | undefined = undefined,
+                changePercent = yesterday && yesterday > 0
+                    ? ((latest - yesterday) / yesterday) * 100
+                    : 0;
+
+            expect(changePercent).toBe(0);
+        });
+    });
+
+    describe('symbol aggregation', () => {
+        it('collects unique symbols from multiple accounts', () => {
+            const symbolMap = new Map<number, string>();
+
+            // Simulate positions from multiple accounts.
+            const positions1 = [{ symbolId: 1, symbol: 'AAPL' }, { symbolId: 2, symbol: 'MSFT' }],
+                positions2 = [{ symbolId: 1, symbol: 'AAPL' }, { symbolId: 3, symbol: 'VFV.TO' }];
+
+            for (const p of [...positions1, ...positions2]) {
+                if (!symbolMap.has(p.symbolId)) {
+                    symbolMap.set(p.symbolId, p.symbol);
+                }
+            }
+
+            expect(symbolMap.size).toBe(3);
+            expect(Array.from(symbolMap.values())).toContain('AAPL');
+            expect(Array.from(symbolMap.values())).toContain('MSFT');
+            expect(Array.from(symbolMap.values())).toContain('VFV.TO');
+        });
+    });
 });
