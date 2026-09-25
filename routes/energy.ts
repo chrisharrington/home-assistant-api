@@ -67,8 +67,6 @@ const insertDailyEnergyGeneration = async (request: Request, response: Response)
             daily: request.body.generation
         });
 
-        sendTelegramMessage(`Yesterday's energy generation was ${request.body.generation} kWh.`);
-
         response.sendStatus(200);
     } catch (e) {
         console.error(e);
