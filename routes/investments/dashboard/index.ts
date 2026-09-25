@@ -6,69 +6,58 @@
 import { Router, Request, Response } from 'express';
 import {
     getLatestBalance,
-    getYesterdayBalance,
     getHistoricalData,
     getInvestmentsCollection,
-    updateAccountsCache,
-    updateSymbolsCache,
-    updateExchangeRateCache
+    fetchBalance
 } from '../shared';
-import { DashboardResponse, SymbolsCache, AccountsCache, ExchangeRateCache } from '../models';
+import { DashboardResponse, SymbolsCache, AccountsCache, ExchangeRateCache, ValuationCache } from '../models';
 
 const router = Router();
 
 /**
+ * Loads the accounts, symbols, exchange-rate and valuation caches together.
+ * @returns The four caches, any of which may be null if not yet populated.
+ */
+async function loadCaches() {
+    const collection = getInvestmentsCollection();
+
+    const [accountsCache, symbolsCache, exchangeRateCache, valuationCache] = await Promise.all([
+        collection.findOne({ type: 'accounts' }) as Promise<AccountsCache | null>,
+        collection.findOne({ type: 'symbols' }) as Promise<SymbolsCache | null>,
+        collection.findOne({ type: 'exchange-rate' }) as Promise<ExchangeRateCache | null>,
+        collection.findOne({ type: 'valuation' }) as Promise<ValuationCache | null>
+    ]);
+
+    return { accountsCache, symbolsCache, exchangeRateCache, valuationCache };
+}
+
+/**
  * GET /investments/dashboard
  * Retrieves all dashboard data including portfolio totals, account breakdown,
- * and individual symbol performance from cached MongoDB data.
+ * symbol performance, and Wealthsimple sync status from cached MongoDB data.
  * @returns JSON object with dashboard data.
  */
 router.get('/', async (_: Request, response: Response) => {
     try {
-        const collection = getInvestmentsCollection();
+        let { accountsCache, symbolsCache, exchangeRateCache, valuationCache } = await loadCaches();
 
-        // Get latest balance.
-        const latestBalance = await getLatestBalance();
-
-        // Get yesterday's balance for percentage change.
-        const yesterdayBalance = await getYesterdayBalance(),
-            changePercent = yesterdayBalance && yesterdayBalance > 0
-                ? Math.round(((latestBalance - yesterdayBalance) / yesterdayBalance) * 10000) / 100
-                : 0;
-
-        // Get historical data (last 365 days).
-        const history = await getHistoricalData(365);
-
-        // Get cached accounts, populate if missing.
-        let accountsCache = await collection.findOne({ type: 'accounts' }) as AccountsCache | null;
-        if (!accountsCache) {
-            await updateAccountsCache();
-            accountsCache = await collection.findOne({ type: 'accounts' }) as AccountsCache | null;
-        }
-        const accounts = accountsCache?.accounts || [];
-
-        // Get cached symbols, populate if missing.
-        let symbolsCache = await collection.findOne({ type: 'symbols' }) as SymbolsCache | null;
-        if (!symbolsCache) {
-            await updateSymbolsCache();
-            symbolsCache = await collection.findOne({ type: 'symbols' }) as SymbolsCache | null;
-        }
-        const symbols = symbolsCache?.symbols || [];
-
-        // Get cached exchange rate, populate if missing.
-        let exchangeRateCache = await collection.findOne({ type: 'exchange-rate' }) as ExchangeRateCache | null;
-        if (!exchangeRateCache) {
-            await updateExchangeRateCache();
-            exchangeRateCache = await collection.findOne({ type: 'exchange-rate' }) as ExchangeRateCache | null;
+        // If any core cache is missing (e.g. first run), run the valuation
+        // job once rather than silently returning empty/stale data.
+        if (!accountsCache || !symbolsCache || !exchangeRateCache || !valuationCache) {
+            await fetchBalance();
+            ({ accountsCache, symbolsCache, exchangeRateCache, valuationCache } = await loadCaches());
         }
 
-        // Determine last updated time.
-        const lastUpdated = symbolsCache?.updatedAt || accountsCache?.updatedAt || new Date();
+        const latestBalance = await getLatestBalance(),
+            history = await getHistoricalData(365),
+            accounts = accountsCache?.accounts || [],
+            symbols = symbolsCache?.symbols || [],
+            lastUpdated = valuationCache?.updatedAt || symbolsCache?.updatedAt || accountsCache?.updatedAt || new Date();
 
         const dashboard: DashboardResponse = {
             totalPortfolio: {
                 amount: latestBalance,
-                changePercent,
+                changePercent: valuationCache?.changePercent || 0,
                 history
             },
             accounts,
@@ -76,6 +65,13 @@ router.get('/', async (_: Request, response: Response) => {
             exchangeRate: {
                 usdToCad: exchangeRateCache?.usdToCad || 0,
                 updatedAt: (exchangeRateCache?.updatedAt || new Date()).toISOString()
+            },
+            status: {
+                degraded: valuationCache?.degraded || false,
+                stale: valuationCache?.wealthsimple.stale ?? true,
+                sessionAlive: valuationCache?.wealthsimple.sessionAlive ?? false,
+                balancesSyncedAt: valuationCache?.wealthsimple.balancesSyncedAt || null,
+                updatedAt: (valuationCache?.updatedAt || new Date()).toISOString()
             },
             lastUpdated: lastUpdated.toISOString()
         };

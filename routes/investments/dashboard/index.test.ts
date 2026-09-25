@@ -30,6 +30,14 @@ describe('GET /investments/dashboard', () => {
                     },
                     accounts: [],
                     symbols: [],
+                    exchangeRate: { usdToCad: 1.38, updatedAt: '2026-01-10T15:00:00Z' },
+                    status: {
+                        degraded: false,
+                        stale: false,
+                        sessionAlive: true,
+                        balancesSyncedAt: '2026-01-10T03:00:00Z',
+                        updatedAt: '2026-01-10T15:00:00Z'
+                    },
                     lastUpdated: '2026-01-10T15:00:00Z'
                 };
 
@@ -72,54 +80,55 @@ describe('GET /investments/dashboard', () => {
             expect(dashboard.totalPortfolio.history).toHaveLength(2);
         });
 
-        it('includes accounts array with balance information', () => {
+        it('includes accounts array with Wealthsimple account id, type label, and balance', () => {
             const accounts = [
-                { accountNumber: '12345', accountType: 'TFSA', owner: 'chris', balance: 50000 },
-                { accountNumber: '67890', accountType: 'RRSP', owner: 'sarah', balance: 75000 }
+                { accountId: 'tfsa-1', accountType: 'TFSA', balance: 50000 },
+                { accountId: 'rrsp-1', accountType: 'RRSP', balance: 75000 }
             ];
 
             expect(accounts).toHaveLength(2);
-            expect(accounts[0]).toHaveProperty('accountNumber');
+            expect(accounts[0]).toHaveProperty('accountId');
             expect(accounts[0]).toHaveProperty('accountType');
-            expect(accounts[0]).toHaveProperty('owner');
             expect(accounts[0]).toHaveProperty('balance');
+            expect(Object.keys(accounts[0]).includes('owner')).toBe(false);
         });
 
-        it('includes symbols array with daily change percentages', () => {
+        it('includes symbols array with description and daily change percentages', () => {
             const symbols = [
-                { symbol: 'VFV.TO', symbolId: 12345, dayChangePercent: 0.85 },
-                { symbol: 'AAPL', symbolId: 67890, dayChangePercent: -0.32 }
+                { symbol: 'HXT', description: 'Horizons S&P/TSX 60', dayChangePercent: 0.85 },
+                { symbol: 'NVDA', description: 'NVIDIA Corp', dayChangePercent: -0.32 }
             ];
 
             expect(symbols).toHaveLength(2);
             expect(symbols[0]).toHaveProperty('symbol');
+            expect(symbols[0]).toHaveProperty('description');
             expect(symbols[0]).toHaveProperty('dayChangePercent');
+        });
+
+        it('includes a status object reporting Wealthsimple sync health', () => {
+            const status = {
+                degraded: false,
+                stale: false,
+                sessionAlive: true,
+                balancesSyncedAt: '2026-01-10T03:00:00Z',
+                updatedAt: '2026-01-10T15:00:00Z'
+            };
+
+            expect(status).toHaveProperty('degraded');
+            expect(status).toHaveProperty('stale');
+            expect(status).toHaveProperty('sessionAlive');
+            expect(status).toHaveProperty('balancesSyncedAt');
         });
     });
 
-    describe('percentage change calculations', () => {
-        it('calculates positive change correctly', () => {
-            const latest = 125000,
-                yesterday = 123500,
-                changePercent = ((latest - yesterday) / yesterday) * 100;
+    describe('intraday change percent', () => {
+        it('is change over previous total, not latest-daily-doc over yesterday', () => {
+            const total = 125000,
+                change = 1500,
+                previousTotal = total - change,
+                changePercent = Math.round((change / previousTotal) * 10000) / 100;
 
-            expect(Math.round(changePercent * 100) / 100).toBeCloseTo(1.21, 1);
-        });
-
-        it('calculates negative change correctly', () => {
-            const latest = 120000,
-                yesterday = 125000,
-                changePercent = ((latest - yesterday) / yesterday) * 100;
-
-            expect(changePercent).toBe(-4);
-        });
-
-        it('returns zero for no change', () => {
-            const latest = 125000,
-                yesterday = 125000,
-                changePercent = ((latest - yesterday) / yesterday) * 100;
-
-            expect(changePercent).toBe(0);
+            expect(changePercent).toBeCloseTo(1.21, 1);
         });
     });
 });

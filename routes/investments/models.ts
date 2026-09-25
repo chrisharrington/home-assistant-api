@@ -1,60 +1,51 @@
 import { ObjectId } from 'mongodb';
 
-export type Auth = {
-    _id?: ObjectId;
-    auth: boolean;
-    accessToken: string;
-    refreshToken: string;
-    expiry: Date;
-    uri: string;
-    owner: string;
-}
-
+/**
+ * A daily portfolio balance snapshot, used for history and day-over-day change.
+ */
 export type DailyBalance = {
     _id?: ObjectId;
     date: Date;
     balance: number;
 }
 
-export type QuestradeRefreshTokenGrant = {
-    access_token: string;
-    api_server: string;
-    expires_in: number;
-    refresh_token: string;
-    token_type: 'Bearer';
-}
-
-export type Account = {
-    type: string;
-    number: string;
-}
-
 /**
- * Daily percentage change for a stock symbol.
+ * Daily percentage change for a stock symbol, cached for the dashboard.
  */
 export type SymbolPerformance = {
     symbol: string;
-    symbolId: number;
     description: string;
     dayChangePercent: number;
 }
 
 /**
- * Balance information for a single Questrade account.
+ * Balance information for a single Wealthsimple account, cached for the dashboard.
  */
 export type AccountBalance = {
-    accountNumber: string;
+    accountId: string;
     accountType: string;
-    owner: string;
     balance: number;
 }
 
 /**
- * Historical data point for portfolio chart.
+ * Historical data point for the portfolio chart.
  */
 export type HistoryPoint = {
     date: string;
     value: number;
+}
+
+/**
+ * Wealthsimple sync/session status surfaced on the dashboard so a frozen
+ * number isn't silent when the upstream sync stops, which is what happened
+ * with Questrade.
+ */
+export type WealthsimpleStatusSummary = {
+    degraded: boolean;
+    stale: boolean;
+    sessionAlive: boolean;
+    balancesSyncedAt: string | null;
+    updatedAt: string;
 }
 
 /**
@@ -72,55 +63,8 @@ export type DashboardResponse = {
         usdToCad: number;
         updatedAt: string;
     };
+    status: WealthsimpleStatusSummary;
     lastUpdated: string;
-}
-
-/**
- * Position data from Questrade API.
- */
-export type QuestradePosition = {
-    symbol: string;
-    symbolId: number;
-    openQuantity: number;
-    closedQuantity: number;
-    currentMarketValue: number;
-    currentPrice: number;
-    averageEntryPrice: number;
-    closedPnl: number;
-    openPnl: number;
-    totalCost: number;
-    isRealTime: boolean;
-    isUnderReorg: boolean;
-}
-
-/**
- * Quote data from Questrade API.
- */
-export type QuestradeQuote = {
-    symbol: string;
-    symbolId: number;
-    bidPrice: number;
-    askPrice: number;
-    lastTradePrice: number;
-    openPrice: number;
-    highPrice: number;
-    lowPrice: number;
-    volume: number;
-    delay: number;
-    isHalted: boolean;
-}
-
-/**
- * Symbol details from Questrade API.
- */
-export type QuestradeSymbol = {
-    symbol: string;
-    symbolId: number;
-    description: string;
-    securityType: string;
-    listingExchange: string;
-    currency: string;
-    prevDayClosePrice: number | null;
 }
 
 /**
@@ -150,5 +94,27 @@ export type ExchangeRateCache = {
     _id?: ObjectId;
     type: 'exchange-rate';
     usdToCad: number;
+    updatedAt: Date;
+}
+
+/**
+ * Cached intraday valuation document stored in MongoDB. Captures the
+ * portfolio's change since previous close plus Wealthsimple sync health, so
+ * the dashboard can flag degraded or stale data instead of silently showing
+ * a frozen number.
+ */
+export type ValuationCache = {
+    _id?: ObjectId;
+    type: 'valuation';
+    changePercent: number;
+    change: number;
+    degraded: boolean;
+    degradedSymbols: string[];
+    wealthsimple: {
+        sessionAlive: boolean;
+        sessionReason: string | null;
+        balancesSyncedAt: string | null;
+        stale: boolean;
+    };
     updatedAt: Date;
 }

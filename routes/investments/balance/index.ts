@@ -5,13 +5,11 @@
 
 import { Router, Request, Response } from 'express';
 import { handleGetBalance } from '../shared';
-import forceRouter from './force';
 import percentageChangeRouter from './percentage-change';
 
 const router = Router();
 
 // Mount nested routes.
-router.use('/force', forceRouter);
 router.use('/percentage-change', percentageChangeRouter);
 
 /**

@@ -7,6 +7,7 @@ declare global {
             EXCHANGE_API_KEY: string;
             TELEGRAM_API_KEY: string;
             TELEGRAM_CHAT_ID: string;
+            WEALTHSIMPLE_API_KEY: string;
         }
     }
 }
