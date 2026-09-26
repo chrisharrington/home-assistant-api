@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { resolveYahooSymbol, parseYahooChartResponse } from './index';
+import { resolveYahooSymbol, parseYahooChartResponse, localDate } from './index';
 
 describe('resolveYahooSymbol', () => {
     it('maps XTSE to a .TO suffix', () => {
@@ -57,6 +57,37 @@ describe('parseYahooChartResponse', () => {
         expect(parseYahooChartResponse(json)).toEqual({ price: 42.5, previousClose: 41.75 });
     });
 
+    // Friday 2026-09-25 16:00 EDT close.
+    const fridayClose = Date.UTC(2026, 8, 25, 20, 0) / 1000,
+        closedJson = {
+            chart: {
+                result: [{
+                    meta: {
+                        regularMarketPrice: 45.97,
+                        chartPreviousClose: 45.71,
+                        regularMarketTime: fridayClose,
+                        exchangeTimezoneName: 'America/Toronto'
+                    }
+                }]
+            }
+        };
+
+    it('keeps the previous close when the last trade was today', () => {
+        const fridayEvening = new Date('2026-09-25T23:00:00Z');
+        expect(parseYahooChartResponse(closedJson, fridayEvening)).toEqual({ price: 45.97, previousClose: 45.71 });
+    });
+
+    it('reports no change when the last trade was on an earlier day', () => {
+        const saturday = new Date('2026-09-26T15:00:00Z');
+        expect(parseYahooChartResponse(closedJson, saturday)).toEqual({ price: 45.97, previousClose: 45.97 });
+    });
+
+    it('compares dates in the exchange timezone, not UTC', () => {
+        // 2026-09-26 01:00 UTC is still Friday evening in Toronto.
+        const fridayLateUtc = new Date('2026-09-26T01:00:00Z');
+        expect(parseYahooChartResponse(closedJson, fridayLateUtc)).toEqual({ price: 45.97, previousClose: 45.71 });
+    });
+
     it('returns null when the result array is empty', () => {
         expect(parseYahooChartResponse({ chart: { result: [] } })).toBeNull();
     });
@@ -69,5 +100,13 @@ describe('parseYahooChartResponse', () => {
         expect(parseYahooChartResponse({})).toBeNull();
         expect(parseYahooChartResponse(null)).toBeNull();
         expect(parseYahooChartResponse(undefined)).toBeNull();
+    });
+});
+
+describe('localDate', () => {
+    it('formats the calendar date in the given timezone', () => {
+        const instant = new Date('2026-09-26T03:00:00Z');
+        expect(localDate(instant, 'America/Edmonton')).toBe('2026-09-25');
+        expect(localDate(instant, 'UTC')).toBe('2026-09-26');
     });
 });

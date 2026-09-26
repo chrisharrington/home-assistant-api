@@ -10,6 +10,8 @@ import {
     getInvestmentsCollection,
     fetchBalance
 } from '../shared';
+import { localDate } from '../shared/quotes';
+import Config from '@root/config';
 import { DashboardResponse, SymbolsCache, AccountsCache, ExchangeRateCache, ValuationCache } from '../models';
 
 const router = Router();
@@ -51,13 +53,17 @@ router.get('/', async (_: Request, response: Response) => {
         const latestBalance = await getLatestBalance(),
             history = await getHistoricalData(365),
             accounts = accountsCache?.accounts || [],
-            symbols = symbolsCache?.symbols || [],
-            lastUpdated = valuationCache?.updatedAt || symbolsCache?.updatedAt || accountsCache?.updatedAt || new Date();
+            lastUpdated = valuationCache?.updatedAt || symbolsCache?.updatedAt || accountsCache?.updatedAt || new Date(),
+            // The valuation job only runs on weekdays during market hours, so
+            // on a weekend the caches still hold the last session's change.
+            // Report no change unless the valuation was refreshed today.
+            changedToday = !!valuationCache && localDate(valuationCache.updatedAt, Config.timezone) === localDate(new Date(), Config.timezone),
+            symbols = (symbolsCache?.symbols || []).map(symbol => changedToday ? symbol : { ...symbol, dayChangePercent: 0 });
 
         const dashboard: DashboardResponse = {
             totalPortfolio: {
                 amount: latestBalance,
-                changePercent: valuationCache?.changePercent || 0,
+                changePercent: changedToday ? valuationCache?.changePercent || 0 : 0,
                 history
             },
             accounts,

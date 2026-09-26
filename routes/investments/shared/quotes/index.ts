@@ -47,19 +47,40 @@ export function resolveYahooSymbol(symbol: string | null, primaryMic: string | n
 }
 
 /**
+ * Formats an instant as a calendar date (YYYY-MM-DD) in the given timezone.
+ * @param date - The instant to format.
+ * @param timeZone - The IANA timezone to interpret it in.
+ * @returns The local calendar date.
+ */
+export function localDate(date: Date, timeZone: string): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+/**
  * Extracts price and previous close from a Yahoo Finance chart API response.
  * Separated from the network call so it can be unit tested with sample JSON
  * rather than by mocking the network.
+ *
+ * When the market is closed for the day (weekend, holiday, or before the
+ * open), Yahoo still returns the last session's price and that session's
+ * previous close, which would report the last session's change as today's.
+ * If the last trade isn't from today in the exchange's timezone, previous
+ * close is set to the price so the quote contributes no change.
  * @param json - The parsed response body.
+ * @param now - The current time, injectable for tests.
  * @returns The quote, or null if the response doesn't contain the expected fields.
  */
-export function parseYahooChartResponse(json: unknown): Quote | null {
+export function parseYahooChartResponse(json: unknown, now: Date = new Date()): Quote | null {
     const meta = (json as { chart?: { result?: { meta?: unknown }[] } })?.chart?.result?.[0]?.meta as
-        { regularMarketPrice?: unknown; chartPreviousClose?: unknown } | undefined;
+        { regularMarketPrice?: unknown; chartPreviousClose?: unknown; regularMarketTime?: unknown; exchangeTimezoneName?: unknown } | undefined;
 
     if (typeof meta?.regularMarketPrice !== 'number' || typeof meta?.chartPreviousClose !== 'number') return null;
 
-    return { price: meta.regularMarketPrice, previousClose: meta.chartPreviousClose };
+    const price = meta.regularMarketPrice,
+        tradedToday = typeof meta.regularMarketTime !== 'number' || typeof meta.exchangeTimezoneName !== 'string'
+            || localDate(new Date(meta.regularMarketTime * 1000), meta.exchangeTimezoneName) === localDate(now, meta.exchangeTimezoneName);
+
+    return { price, previousClose: tradedToday ? meta.chartPreviousClose : price };
 }
 
 /**
