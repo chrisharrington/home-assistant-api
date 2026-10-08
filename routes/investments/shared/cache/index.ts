@@ -23,7 +23,7 @@ dayjs.extend(utc);
  */
 export function buildAccountValuationInputs(
     positionsResponse: WealthsimplePositionsResponse,
-    balanceResponse: { accounts: { accountId: string; cash: WealthsimpleCash; holdingsValue: WealthsimpleCash }[] }
+    balanceResponse: { accounts: { accountId: string; cash: WealthsimpleCash; holdingsValue: WealthsimpleCash; scope?: 'own' | 'household' }[] }
 ): AccountValuationInput[] {
     const balanceByAccount = new Map(balanceResponse.accounts.map(account => [account.accountId, account])),
         accounts: AccountValuationInput[] = positionsResponse.accounts
@@ -32,6 +32,9 @@ export function buildAccountValuationInputs(
                 const balance = balanceByAccount.get(account.accountId);
                 return {
                     accountId: account.accountId,
+                    // Prefer /positions' scope, falling back to /balance's,
+                    // then to 'own' when neither reports it (older responses).
+                    scope: account.scope || balance?.scope || 'own',
                     cash: balance?.cash || { cad: 0, usd: 0 },
                     holdingsValue: balance?.holdingsValue || { cad: 0, usd: 0 },
                     positions: account.positions.map(position => ({
@@ -53,6 +56,7 @@ export function buildAccountValuationInputs(
 
         accounts.push({
             accountId: balance.accountId,
+            scope: balance.scope || 'own',
             cash: balance.cash,
             holdingsValue: balance.holdingsValue,
             positions: []
@@ -125,10 +129,34 @@ export async function updateSymbolsCache(positionsResponse: WealthsimplePosition
 }
 
 /**
+ * Computes Wealthsimple sync staleness from /status. The own balances sync
+ * is stale if it's missing, older than 36 hours, or the session is dead.
+ * The household balances sync (e.g. a spouse's accounts) is tracked
+ * separately and folds into the overall staleness, so a missing or failed
+ * household sync never silently drops that balance from the total. Absent
+ * `householdBalances` means no household sync is configured upstream, which
+ * isn't stale. Pure - no I/O - so it's unit tested directly; see
+ * updateValuationCache for the MongoDB write built from its result.
+ * @param status - The wealthsimple-api session/sync status.
+ * @returns Overall staleness, household-only staleness, and the last household sync time.
+ */
+export function computeStaleness(status: WealthsimpleStatus): { stale: boolean; householdStale: boolean; householdSyncedAt: string | null } {
+    const balancesSyncedAt = status.jobs.balances.lastSyncedAt,
+        ownStale = !balancesSyncedAt || dayjs.utc().diff(dayjs.utc(balancesSyncedAt), 'hour') >= 36 || !status.session.alive,
+        householdBalances = status.jobs.householdBalances,
+        householdSyncedAt = householdBalances?.lastSyncedAt ?? null,
+        householdStale = !!householdBalances && (
+            householdBalances.lastResult === 'failure' ||
+            !householdSyncedAt ||
+            dayjs.utc().diff(dayjs.utc(householdSyncedAt), 'hour') >= 36
+        );
+
+    return { stale: ownStale || householdStale, householdStale, householdSyncedAt };
+}
+
+/**
  * Updates the cached intraday valuation in MongoDB, including Wealthsimple
- * sync health so a frozen number is never silent - the balances sync is
- * considered stale if it's missing or older than 36 hours, or the session
- * is dead.
+ * sync health so a frozen number is never silent.
  * @param valuation - The completed portfolio valuation.
  * @param status - The wealthsimple-api session/sync status.
  */
@@ -137,7 +165,7 @@ export async function updateValuationCache(
     status: WealthsimpleStatus
 ): Promise<void> {
     const balancesSyncedAt = status.jobs.balances.lastSyncedAt,
-        stale = !balancesSyncedAt || dayjs.utc().diff(dayjs.utc(balancesSyncedAt), 'hour') >= 36 || !status.session.alive,
+        { stale, householdStale, householdSyncedAt } = computeStaleness(status),
         collection = getInvestmentsCollection(),
         cache: Omit<ValuationCache, '_id'> = {
             type: 'valuation',
@@ -149,7 +177,9 @@ export async function updateValuationCache(
                 sessionAlive: status.session.alive,
                 sessionReason: status.session.reason,
                 balancesSyncedAt,
-                stale
+                stale,
+                householdStale,
+                householdSyncedAt
             },
             updatedAt: new Date()
         };

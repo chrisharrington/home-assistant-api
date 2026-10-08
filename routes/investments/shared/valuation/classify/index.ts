@@ -41,6 +41,9 @@ export type AccountValuationInput = {
     cash: CashAmount;
     positions: PositionInput[];
     holdingsValue: CashAmount;
+    // Whether this account belongs to the household member (e.g. a spouse)
+    // rather than to the account owner. Absent/undefined is treated as 'own'.
+    scope?: 'own' | 'household';
 }
 
 /**
@@ -96,14 +99,17 @@ export function isInvestmentAccount(accountId: string): boolean {
 }
 
 /**
- * Maps an account id to a display label based on its id prefix.
+ * Maps an account id to a display label based on its id prefix, optionally
+ * suffixed with a household member's name (e.g. "RRSP (Sarah)"). The owner
+ * name is resolved by the caller - this stays a pure string mapping with no
+ * config lookup.
  * @param accountId - The Wealthsimple account id.
+ * @param householdOwnerName - The household member's name to append, or null/undefined for an own account.
  * @returns A human-readable account type label, or the prefix uppercased if unrecognized.
  */
-export function labelForAccount(accountId: string): string {
-    const match = labelsByPrefix.find(([prefix]) => accountId.startsWith(prefix));
-    if (match) return match[1];
+export function labelForAccount(accountId: string, householdOwnerName?: string | null): string {
+    const match = labelsByPrefix.find(([prefix]) => accountId.startsWith(prefix)),
+        typeLabel = match ? match[1] : accountId.split('-')[0].toUpperCase();
 
-    const prefix = accountId.split('-')[0];
-    return prefix.toUpperCase();
+    return householdOwnerName ? `${typeLabel} (${householdOwnerName})` : typeLabel;
 }

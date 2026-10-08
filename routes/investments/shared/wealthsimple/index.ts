@@ -21,6 +21,13 @@ export type WealthsimpleStatus = {
         balances: {
             lastSyncedAt: string | null;
         };
+        // Absent on older wealthsimple-api responses / when no household
+        // account is configured upstream - treated as "not stale".
+        householdBalances?: {
+            lastSyncedAt: string | null;
+            lastResult?: string | null;
+            lastError?: string | null;
+        };
     };
 }
 
@@ -40,6 +47,9 @@ export type WealthsimpleBalanceAccount = {
     cash: WealthsimpleCash;
     holdingsValue: WealthsimpleCash;
     total: WealthsimpleCash;
+    // Absent on older responses - treated as 'own'.
+    scope?: 'own' | 'household';
+    householdSyncedAt?: string | null;
 }
 
 /**
@@ -71,6 +81,9 @@ export type WealthsimplePosition = {
 export type WealthsimplePositionsAccount = {
     accountId: string;
     positions: WealthsimplePosition[];
+    // Absent on older responses - treated as 'own'.
+    scope?: 'own' | 'household';
+    householdSyncedAt?: string | null;
 }
 
 /**

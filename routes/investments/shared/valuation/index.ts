@@ -5,6 +5,7 @@
  * classification/labeling lives in ./classify.
  */
 
+import Config from '@root/config';
 import { AccountValuationInput, AccountValuationResult, PortfolioValuation, PositionInput, Quote, labelForAccount } from './classify';
 
 export type { CashAmount, Quote, PositionInput, AccountValuationInput, AccountValuationResult, PortfolioValuation } from './classify';
@@ -84,9 +85,16 @@ export function valuateAccount(account: AccountValuationInput, quotes: Map<strin
     // value for the whole account instead of dropping just that holding.
     if (unpriced) holdingsCad = account.holdingsValue.cad + account.holdingsValue.usd * fxUsdToCad;
 
+    // Household accounts (e.g. a spouse's RRSP) get the member's configured
+    // name appended to their label; unconfigured household accounts fall
+    // back to a generic "Household" suffix rather than being unlabeled.
+    const householdOwnerName = account.scope === 'household'
+        ? Config.householdAccountOwners[account.accountId] || 'Household'
+        : null;
+
     return {
         accountId: account.accountId,
-        label: labelForAccount(account.accountId),
+        label: labelForAccount(account.accountId, householdOwnerName),
         balance: cashCad + holdingsCad,
         changeCad,
         degraded,

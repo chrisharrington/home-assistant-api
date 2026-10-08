@@ -42,4 +42,14 @@ describe('labelForAccount', () => {
     it('uppercases the prefix for an unrecognized account type', () => {
         expect(labelForAccount('unknown-type-1')).toBe('UNKNOWN');
     });
+
+    it('appends the household owner name when one is given', () => {
+        expect(labelForAccount('rrsp-1', 'Sarah')).toBe('RRSP (Sarah)');
+    });
+
+    it('leaves the label unchanged when no household owner name is given', () => {
+        expect(labelForAccount('rrsp-1')).toBe('RRSP');
+        expect(labelForAccount('rrsp-1', null)).toBe('RRSP');
+        expect(labelForAccount('rrsp-1', undefined)).toBe('RRSP');
+    });
 });

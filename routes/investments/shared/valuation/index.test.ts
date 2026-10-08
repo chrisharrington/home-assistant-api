@@ -80,6 +80,45 @@ describe('valuateAccount', () => {
 
         expect(result.label).toBe('Spousal RRSP');
     });
+
+    it('leaves the label unchanged for an own account', () => {
+        const account: AccountValuationInput = {
+                accountId: 'rrsp-nlqxp1es',
+                scope: 'own',
+                cash: { cad: 0, usd: 0 },
+                holdingsValue: { cad: 0, usd: 0 },
+                positions: []
+            },
+            result = valuateAccount(account, new Map(), 1.35);
+
+        expect(result.label).toBe('RRSP');
+    });
+
+    it('appends the configured owner name for a known household account', () => {
+        const account: AccountValuationInput = {
+                accountId: 'rrsp-ZFgB7yct0Q',
+                scope: 'household',
+                cash: { cad: 0, usd: 0 },
+                holdingsValue: { cad: 0, usd: 0 },
+                positions: []
+            },
+            result = valuateAccount(account, new Map(), 1.35);
+
+        expect(result.label).toBe('RRSP (Sarah)');
+    });
+
+    it('falls back to "Household" for a household account with no configured owner', () => {
+        const account: AccountValuationInput = {
+                accountId: 'resp-unconfigured-1',
+                scope: 'household',
+                cash: { cad: 0, usd: 0 },
+                holdingsValue: { cad: 0, usd: 0 },
+                positions: []
+            },
+            result = valuateAccount(account, new Map(), 1.35);
+
+        expect(result.label).toBe('RESP (Household)');
+    });
 });
 
 describe('valuatePortfolio', () => {

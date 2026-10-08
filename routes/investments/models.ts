@@ -45,6 +45,11 @@ export type WealthsimpleStatusSummary = {
     stale: boolean;
     sessionAlive: boolean;
     balancesSyncedAt: string | null;
+    // Whether the household (non-own) accounts sync is failing, stale, or
+    // has never run; folded into `stale` above so it's never silently
+    // dropped from the total.
+    householdStale: boolean;
+    householdSyncedAt: string | null;
     updatedAt: string;
 }
 
@@ -115,6 +120,8 @@ export type ValuationCache = {
         sessionReason: string | null;
         balancesSyncedAt: string | null;
         stale: boolean;
+        householdStale: boolean;
+        householdSyncedAt: string | null;
     };
     updatedAt: Date;
 }

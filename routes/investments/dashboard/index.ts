@@ -77,6 +77,8 @@ router.get('/', async (_: Request, response: Response) => {
                 stale: valuationCache?.wealthsimple.stale ?? true,
                 sessionAlive: valuationCache?.wealthsimple.sessionAlive ?? false,
                 balancesSyncedAt: valuationCache?.wealthsimple.balancesSyncedAt || null,
+                householdStale: valuationCache?.wealthsimple.householdStale ?? false,
+                householdSyncedAt: valuationCache?.wealthsimple.householdSyncedAt || null,
                 updatedAt: (valuationCache?.updatedAt || new Date()).toISOString()
             },
             lastUpdated: lastUpdated.toISOString()
