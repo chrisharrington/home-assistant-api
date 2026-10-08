@@ -8,8 +8,8 @@
 import { MongoClient, Collection, Db } from 'mongodb';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import fetch from 'node-fetch';
 import { DailyBalance, ExchangeRateCache } from '../../models';
+import { fetchUsdToCadRate } from '../quotes';
 
 dayjs.extend(utc);
 
@@ -147,21 +147,6 @@ export async function getHistoricalData(days: number = 365): Promise<{ date: str
 }
 
 /**
- * Fetches the current USD to CAD exchange rate from Frankfurter API.
- * @returns The exchange rate (USD to CAD).
- */
-async function getRemoteExchangeRate(): Promise<number> {
-    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=CAD');
-
-    if (!response.ok) {
-        throw new Error(`Error fetching exchange rate: ${response.status} ${response.statusText}`);
-    }
-
-    const json = await response.json() as { rates: { CAD: number } };
-    return json.rates.CAD;
-}
-
-/**
  * Updates the cached exchange rate in MongoDB and returns it for immediate
  * use in valuation math. Falls back to the previously cached rate (or 1) if
  * the remote fetch fails, rather than blocking the whole valuation run.
@@ -173,7 +158,7 @@ export async function updateExchangeRateCache(): Promise<number> {
         fallback = existing?.usdToCad ?? 1;
 
     try {
-        const usdToCad = await getRemoteExchangeRate(),
+        const usdToCad = await fetchUsdToCadRate(),
             cache: Omit<ExchangeRateCache, '_id'> = {
                 type: 'exchange-rate',
                 usdToCad,

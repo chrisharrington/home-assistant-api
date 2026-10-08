@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { resolveYahooSymbol, parseYahooChartResponse, localDate } from './index';
+import { resolveYahooSymbol, parseYahooChartResponse, localDate, parseFrankfurterResponse } from './index';
 
 describe('resolveYahooSymbol', () => {
     it('maps XTSE to a .TO suffix', () => {
@@ -108,5 +108,17 @@ describe('localDate', () => {
         const instant = new Date('2026-09-26T03:00:00Z');
         expect(localDate(instant, 'America/Edmonton')).toBe('2026-09-25');
         expect(localDate(instant, 'UTC')).toBe('2026-09-26');
+    });
+});
+
+describe('parseFrankfurterResponse', () => {
+    it('returns the CAD rate', () => {
+        expect(parseFrankfurterResponse({ base: 'USD', rates: { CAD: 1.4262 } })).toBe(1.4262);
+    });
+
+    it('returns null when the CAD rate is missing or malformed', () => {
+        expect(parseFrankfurterResponse({ rates: {} })).toBeNull();
+        expect(parseFrankfurterResponse({ rates: { CAD: '1.4' } })).toBeNull();
+        expect(parseFrankfurterResponse(null)).toBeNull();
     });
 });

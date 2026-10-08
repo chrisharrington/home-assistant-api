@@ -128,3 +128,44 @@ export async function fetchYahooQuotes(yahooSymbols: string[]): Promise<Map<stri
 
     return quotes;
 }
+
+/**
+ * Extracts the CAD rate from a Frankfurter latest-rates response. Separated
+ * from the network call so it can be unit tested with sample JSON.
+ * @param json - The parsed response body.
+ * @returns The USD to CAD rate, or null if the response doesn't contain it.
+ */
+export function parseFrankfurterResponse(json: unknown): number | null {
+    const rate = (json as { rates?: { CAD?: unknown } })?.rates?.CAD;
+    return typeof rate === 'number' ? rate : null;
+}
+
+/**
+ * Fetches the USD to CAD rate from Frankfurter. It serves the ECB's once-daily
+ * reference rate, so it's only the fallback for when Yahoo is unavailable.
+ * @returns The USD to CAD rate.
+ * @throws If the request fails or the response lacks a CAD rate.
+ */
+async function fetchFrankfurterRate(): Promise<number> {
+    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=CAD');
+    if (!response.ok) throw new Error(`Error fetching exchange rate: ${response.status} ${response.statusText}`);
+
+    const rate = parseFrankfurterResponse(await response.json());
+    if (rate === null) throw new Error('Frankfurter response did not contain a CAD rate');
+
+    return rate;
+}
+
+/**
+ * Fetches the current USD to CAD rate: a near-live Yahoo quote (USDCAD=X),
+ * falling back to Frankfurter's daily rate if Yahoo fails.
+ * @returns The USD to CAD rate.
+ * @throws If both sources fail.
+ */
+export async function fetchUsdToCadRate(): Promise<number> {
+    const quote = await fetchYahooQuote('USDCAD=X');
+    if (quote) return quote.price;
+
+    console.warn('Yahoo USDCAD=X quote unavailable, falling back to Frankfurter');
+    return fetchFrankfurterRate();
+}
